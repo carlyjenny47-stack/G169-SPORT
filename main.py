@@ -1,10 +1,9 @@
 import os
 import logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters
+from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
 
 # --- Font Data ---
-# This maps font names to their Unicode character mappings (Upper, Lower, Digits)
 FONTS = {
     "𝕭𝖔𝖑𝖉": ("𝕬𝕭𝕮𝕯𝕰𝕱𝕲𝕳𝕴𝕵𝕶𝕷𝕸𝕹𝕺𝕻𝕼𝕽𝕾𝕿𝖀𝖁𝖂𝖃𝖄𝖅",
               "𝖆𝖇𝖈𝖉𝖊𝖋𝖌𝖍𝖎𝖏𝖐𝖑𝖒𝖓𝖔𝖕𝖖𝖗𝖘𝖙𝖚𝖛𝖜𝖝𝖞𝖟",
@@ -20,9 +19,8 @@ FONTS = {
                   "0123456789"),
 }
 
-# --- Helper Function to Convert Text ---
 def convert_text(text: str, font_key: str):
-    """Convert a text string to the chosen Unicode font."""
+    """Convert text to the chosen Unicode font."""
     if font_key not in FONTS:
         return text
     
@@ -40,8 +38,6 @@ def convert_text(text: str, font_key: str):
             result.append(char)
             
     return "".join(result)
-
-# --- Bot Command Handlers ---
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
@@ -75,33 +71,26 @@ async def about_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Built with ❤️ for the Telegram community."
     )
 
-# --- Inline Keyboard for Font Selection ---
 def font_selection_keyboard():
     keyboard = []
     for font_name in FONTS.keys():
         keyboard.append([InlineKeyboardButton(font_name, callback_data=font_name)])
     return InlineKeyboardMarkup(keyboard)
 
-# --- Callback Query Handler for Font Selection ---
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     
     selected_font = query.data
-    # Get the original message the user sent (stored in context)
-    # We need to temporarily store the user's last message.
-    # A simpler approach: prompt the user to send text if none is stored.
     context.user_data['selected_font'] = selected_font
     await query.edit_message_text(
         f"✅ Font selected: *{selected_font}*\n\nNow, send me a message to transform!",
         parse_mode="Markdown"
     )
 
-# --- Message Handler to Process Text ---
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
     
-    # If the user hasn't selected a font, ask them to.
     if 'selected_font' not in context.user_data:
         await update.message.reply_text(
             "Please select a font style first!",
@@ -112,15 +101,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     selected_font = context.user_data['selected_font']
     converted = convert_text(text, selected_font)
     
-    # Send back the converted text.
-    # We send a message with a nice caption showing which font was used.
     await update.message.reply_text(
         f"*{selected_font} Style:*\n\n{converted}",
         parse_mode="Markdown",
-        reply_markup=font_selection_keyboard() # Show keyboard again for convenience
+        reply_markup=font_selection_keyboard()
     )
 
-# --- Main Application Setup ---
 def main():
     # Set up logging
     logging.basicConfig(
@@ -128,29 +114,25 @@ def main():
         level=logging.INFO
     )
 
-    # Get the token from environment variables
+    # Get token from environment
     token = os.environ.get('TELEGRAM_TOKEN')
     if not token:
         logging.error("No TELEGRAM_TOKEN set in environment variables!")
         return
 
-    # Create the Application
-    application = ApplicationBuilder().token(token).build()
+    # Create the Application (FIXED: Using Application instead of ApplicationBuilder)
+    application = Application.builder().token(token).build()
 
-    # Add command handlers
+    # Add handlers
     application.add_handler(CommandHandler('start', start))
     application.add_handler(CommandHandler('help', help_command))
     application.add_handler(CommandHandler('fonts', fonts_command))
     application.add_handler(CommandHandler('about', about_command))
-    
-    # Add callback query handler for buttons
     application.add_handler(CallbackQueryHandler(button_callback))
-    
-    # Add message handler for text messages
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-    # Start the bot (long polling)
-    logging.info("Starting bot with long polling...")
+    # Start the bot
+    logging.info("🚀 Bot is starting...")
     application.run_polling()
 
 if __name__ == '__main__':
