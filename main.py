@@ -1,7 +1,7 @@
 import os
 import logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
+from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters, CallbackQueryHandler
 
 # --- Font Data ---
 FONTS = {
@@ -120,7 +120,7 @@ def main():
         logging.error("No TELEGRAM_TOKEN set in environment variables!")
         return
 
-    # Create the Application (FIXED: Using Application instead of ApplicationBuilder)
+    # Create the Application
     application = Application.builder().token(token).build()
 
     # Add handlers
